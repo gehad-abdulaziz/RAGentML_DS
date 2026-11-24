@@ -1,0 +1,31 @@
+# Python 3.10+
+# Agent framework
+langgraph
+langchain
+langchain-core
+
+# LLM integrations (configurable provider via LLM_PROVIDER in .env).
+# Install only the one(s) your team uses; keep the others commented out.
+langchain-openai
+# langchain-anthropic
+# langchain-google-genai
+# langchain-ollama
+
+# Vector DB / embeddings
+chromadb
+sentence-transformers
+
+# Graph DB
+neo4j
+
+# ML
+scikit-learn
+pandas
+numpy
+joblib
+
+# Utilities
+python-dotenv
+
+# Testing
+pytest

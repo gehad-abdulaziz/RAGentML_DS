@@ -1,0 +1,22 @@
+# Owner: Member 4 (feature/graph-tool)
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# Browser UI: http://localhost:7474  (login with NEO4J_USER / NEO4J_PASSWORD)
+#
+# TODO (Member 4): make sure NEO4J_AUTH matches NEO4J_USER/NEO4J_PASSWORD in your .env.
+services:
+  neo4j:
+    image: neo4j:5
+    container_name: ragentml_neo4j
+    ports:
+      - "7474:7474"   # HTTP browser UI
+      - "7687:7687"   # Bolt (used by the neo4j Python driver)
+    environment:
+      # TODO: keep in sync with .env (format: user/password)
+      - NEO4J_AUTH=neo4j/change-me-please
+    volumes:
+      - neo4j_data:/data
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
