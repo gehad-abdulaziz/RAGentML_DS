@@ -1,0 +1,32 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# Rebuildable vector store (rebuild with: python -m src.vectordb.build_index)
+chroma_db/*
+!chroma_db/.gitkeep
+
+# Large raw data (document the download source in docs/data_sources.md instead)
+data/raw/*
+!data/raw/.gitkeep
+
+# Temporary logs (keep saved test logs like logs/*.log / logs/*.jsonl)
+logs/*.tmp
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
