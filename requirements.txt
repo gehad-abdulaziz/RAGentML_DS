@@ -14,6 +14,10 @@ langchain-openai
 # Vector DB / embeddings
 chromadb
 sentence-transformers
+langchain-community
+langchain-text-splitters
+pypdf
+tiktoken
 
 # Graph DB
 neo4j
