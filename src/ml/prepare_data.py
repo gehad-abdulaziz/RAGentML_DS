@@ -274,10 +274,9 @@ def make_preprocessor(
                         (
                             "imputer",
                             SimpleImputer(
-                                strategy="constant",
-                                fill_value="Unknown",
-                                keep_empty_features=True,
-                            )
+                            strategy="most_frequent",
+                            keep_empty_features=True
+                            )   
                         ),
                         (
                             "encoder",
