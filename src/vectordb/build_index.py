@@ -196,7 +196,7 @@ def build_index() -> None:
     )
 
     print("\nIndex built successfully!")
-    print("Documents loaded:", len(documents))
+    print("Pages loaded:", len(documents))
     print("Chunks created:", len(all_chunks))
     print("Total chunks in ChromaDB:", collection.count())
     print("Collection:", CHROMA_COLLECTION)
