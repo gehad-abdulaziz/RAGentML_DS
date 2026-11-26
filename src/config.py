@@ -41,6 +41,6 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
 # --- ChromaDB ----------------------------------------------------------------
 _chroma_path = Path(os.getenv("CHROMA_PATH", "chroma_db"))
 CHROMA_PATH = _chroma_path if _chroma_path.is_absolute() else PROJECT_ROOT / _chroma_path
-CHROMA_COLLECTION = "study_guides"  # TODO (Members 2 & 3): agree on the final name
+CHROMA_COLLECTION = "study_guides"  # Shared collection used by ingestion and retrieval
 
 # TODO (Member 6): add shared constants if needed (e.g., LLM temperature, log file name).
