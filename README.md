@@ -120,7 +120,7 @@ Summary (full rules in [CONTRIBUTING.md](CONTRIBUTING.md), ownership in [docs/te
 | Branch | Owner | Files owned | Merges into |
 |--------|-------|-------------|-------------|
 | `feature/ml-tool` | Member 1 | `src/ml/`, `src/tools/ml_tool.py`, `models/`, `data/raw/`, `data/processed/`, `tests/test_ml_tool.py` | `develop` |
-| `feature/rag-ingestion` | Member 2 | `data/documents/`, `src/vectordb/build_index.py` | `develop` |
+| `feature/rag-ingestion` | Member 2 | `data/documents/`, `src/vectordb/build_index.py` | `done` |
 | `feature/rag-retrieval` | Member 3 | `src/tools/vector_tool.py`, `tests/test_vector_tool.py` | `develop` |
 | `feature/graph-tool` | Member 4 | `src/graphdb/`, `src/tools/graph_tool.py`, `data/graph_seed/`, `docker-compose.yml`, `tests/test_graph_tool.py` | `develop` |
 | `feature/agent-core` | Member 5 | `src/agent/state.py`, `src/agent/nodes.py`, `src/agent/graph.py`, `docs/architecture.md` | `develop` |
@@ -134,8 +134,7 @@ Each member fills in **only their own section** (what they built, how to run it,
 TODO
 
 ### Member 2 — RAG ingestion
-TODO
-
+Noha Ahmed
 ### Member 3 — RAG retrieval
 TODO
 
