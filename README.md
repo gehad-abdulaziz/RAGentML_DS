@@ -120,7 +120,7 @@ Summary (full rules in [CONTRIBUTING.md](CONTRIBUTING.md), ownership in [docs/te
 | Branch | Owner | Files owned | Merges into |
 |--------|-------|-------------|-------------|
 | `feature/ml-tool` | Member 1 | `src/ml/`, `src/tools/ml_tool.py`, `models/`, `data/raw/`, `data/processed/`, `tests/test_ml_tool.py` | `develop` |
-| `feature/rag-ingestion` | Member 2 | `data/documents/`, `src/vectordb/build_index.py` | `done` |
+| `feature/rag-ingestion` | Member 2 | `data/documents/`, `src/vectordb/build_index.py` | `develop` |
 | `feature/rag-retrieval` | Member 3 | `src/tools/vector_tool.py`, `tests/test_vector_tool.py` | `develop` |
 | `feature/graph-tool` | Member 4 | `src/graphdb/`, `src/tools/graph_tool.py`, `data/graph_seed/`, `docker-compose.yml`, `tests/test_graph_tool.py` | `develop` |
 | `feature/agent-core` | Member 5 | `src/agent/state.py`, `src/agent/nodes.py`, `src/agent/graph.py`, `docs/architecture.md` | `develop` |
@@ -134,7 +134,42 @@ Each member fills in **only their own section** (what they built, how to run it,
 TODO
 
 ### Member 2 — RAG ingestion
-Noha Ahmed
+
+Implemented the document ingestion pipeline for the Student Performance Advisor project.
+
+**Documents:**
+- Prepared 9 educational PDF guides covering academic performance, mathematics, programming, time management, exam preparation, memory and learning, note-taking, motivation, and feedback and goal setting.
+- Stored the PDF files in `data/documents/`.
+
+**Implementation:**
+- Loaded PDF files and extracted their text page by page using `PyPDFLoader`.
+- Split the extracted text into chunks using `RecursiveCharacterTextSplitter`.
+- Used a chunk size of 500 tokens and an overlap of 80 tokens.
+- Generated multilingual embeddings using `paraphrase-multilingual-MiniLM-L12-v2`.
+- Stored the chunks, embeddings, and metadata in ChromaDB.
+- Added metadata for each chunk, including its source filename, title, category, page number, and chunk ID.
+- Used the shared ChromaDB configuration from `src/config.py`.
+
+**How to build the vector database:**
+
+Run the following command from the project root:
+
+```bash
+python -m src.vectordb.build_index
+```
+
+**Database configuration:**
+- Collection name: `study_guides`
+- Database path: `chroma_db/` (configurable through `CHROMA_PATH`).
+
+**Testing:**
+- Successfully indexed the prepared PDF documents.
+- Generated 43 chunks from 41 extracted PDF pages.
+- Verified that the chunks were stored in the `study_guides` collection.
+- Tested semantic retrieval using both English and Arabic queries.
+
+**Known limitation:**
+- Initial retrieval tests showed stronger ranking for English queries than for some Arabic queries. Further retrieval evaluation and optimization may improve Arabic search results.
 ### Member 3 — RAG retrieval
 TODO
 
