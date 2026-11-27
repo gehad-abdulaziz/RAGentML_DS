@@ -1,0 +1,22 @@
+topic,requires
+Functions and Graphs,Algebra
+Limits,Functions and Graphs
+Differentiation,Limits
+Differentiation,Algebra
+Integration,Differentiation
+Matrix Operations,Algebra
+Systems of Linear Equations,Algebra
+Eigenvalues and Eigenvectors,Matrix Operations
+Eigenvalues and Eigenvectors,Systems of Linear Equations
+Probability,Algebra
+Probability Distributions,Probability
+Statistical Inference,Probability Distributions
+Conditional Statements and Loops,"Variables, Data Types, and Operators"
+Functions,Conditional Statements and Loops
+"Arrays, Lists, and Strings",Conditional Statements and Loops
+Debugging,Functions
+Classes and Objects,Functions
+Encapsulation and Inheritance,Classes and Objects
+Data Structures,"Arrays, Lists, and Strings"
+Searching and Sorting,Data Structures
+Complexity Analysis,Searching and Sorting

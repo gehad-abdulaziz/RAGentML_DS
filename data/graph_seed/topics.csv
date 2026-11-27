@@ -1,0 +1,22 @@
+name,description
+Algebra,Expressions and linear and quadratic equations
+Functions and Graphs,Understanding functions and reading their graphs
+Limits,The idea of a value a function approaches
+Differentiation,Rates of change and derivative rules
+Integration,Accumulation and integration techniques
+Matrix Operations,Vector and matrix calculations and determinants
+Systems of Linear Equations,Solving several linear equations together
+Eigenvalues and Eigenvectors,Special vectors that keep their direction under a transformation
+Probability,Probability rules and random events
+Probability Distributions,Distributions and measures like mean and variance
+Statistical Inference,Drawing conclusions about data using probability
+"Variables, Data Types, and Operators",Storing values and basic data types and operators
+Conditional Statements and Loops,Decision making and repetition in code
+Functions,Writing and calling reusable functions in code
+"Arrays, Lists, and Strings",Working with lists arrays and text
+Debugging,Finding and fixing mistakes in programs
+Classes and Objects,Object-oriented basics: classes attributes and methods
+Encapsulation and Inheritance,Hiding data and reusing behavior across classes
+Data Structures,Stacks queues linked lists trees and hash tables
+Searching and Sorting,Basic searching and sorting algorithms
+Complexity Analysis,Comparing algorithms using time and space cost
