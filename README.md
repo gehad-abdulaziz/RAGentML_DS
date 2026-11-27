@@ -174,7 +174,31 @@ python -m src.vectordb.build_index
 TODO
 
 ### Member 4 — Graph tool
-TODO
+
+**What I built:** a Neo4j knowledge graph (55 nodes, 136 relationships) of subjects, courses, topics,
+prerequisites, study strategies and learning resources, plus the `query_graph` tool.
+
+**Files:** `src/graphdb/schema.cypher`, `src/graphdb/seed_graph.py`, `src/graphdb/check_links.py`,
+`src/tools/graph_tool.py`, `data/graph_seed/*.csv`, `docker-compose.yml`, `tests/test_graph_tool.py`.
+
+**How to run:**
+```bash
+docker compose up -d                       # start Neo4j (wait ~30 s the first time)
+python -m src.graphdb.seed_graph --reset   # clear the graph, then create constraints, nodes and relationships
+python -m src.tools.graph_tool             # try all query types without the agent
+python -m pytest tests/test_graph_tool.py -v | tee logs/graph_tool_tests.log
+```
+
+**Design decisions:**
+- Fixed set of 6 query types, each with ONE parameterized Cypher statement (no string formatting -> no Cypher injection).
+- `MERGE` + uniqueness constraints -> seeding is idempotent. `--reset` clears the graph first (needed after removing rows from the CSVs).
+- The seed script validates every CSV reference first, so a typo can't silently drop a relationship.
+- Topic and strategy names come from the PDFs, so the agent can use graph names as search queries in the vector DB.
+- Case-insensitive matching, because the LLM may write "calculus i".
+- Prerequisite queries follow chains (`*1..5`) and return a `distance`.
+- Tool never raises: all failures (bad input, Neo4j down) return `{"status": "error", ...}`; unknown entity returns `ok` with `rows: []`.
+
+**Known limitations:** small hand-made graph; course codes are fictional; only Python-based programming resources.
 
 ### Member 5 — Agent core (LangGraph)
 TODO
