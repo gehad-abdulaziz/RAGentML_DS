@@ -1,9 +1,13 @@
 # Owner: Member 4 (feature/graph-tool)
 # Start:  docker compose up -d
 # Stop:   docker compose down
+# Reset (delete all Neo4j data, e.g. after changing the password):  docker compose down -v
 # Browser UI: http://localhost:7474  (login with NEO4J_USER / NEO4J_PASSWORD)
 #
-# TODO (Member 4): make sure NEO4J_AUTH matches NEO4J_USER/NEO4J_PASSWORD in your .env.
+# The login comes from your .env file (docker compose reads .env automatically),
+# so NEO4J_USER / NEO4J_PASSWORD in .env are the single source of truth.
+# If .env is missing, the defaults after ":-" are used (they match .env.example).
+# NOTE: Neo4j requires a password of at least 8 characters.
 services:
   neo4j:
     image: neo4j:5
@@ -12,8 +16,7 @@ services:
       - "7474:7474"   # HTTP browser UI
       - "7687:7687"   # Bolt (used by the neo4j Python driver)
     environment:
-      # TODO: keep in sync with .env (format: user/password)
-      - NEO4J_AUTH=neo4j/change-me-please
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-change-me-please}
     volumes:
       - neo4j_data:/data
     restart: unless-stopped
