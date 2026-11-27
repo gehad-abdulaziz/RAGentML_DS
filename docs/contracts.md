@@ -77,10 +77,15 @@ Success:
 
 | query_type | params | Returns (rows) |
 |------------|--------|----------------|
-| `prerequisites` | `{"course": str}` | TODO |
-| `topics_in_course` | `{"course": str}` | TODO |
-| `resources_for_topic` | `{"topic": str}` | TODO |
-| `courses_in_subject` | `{"subject": str}` | TODO |
+| `prerequisites` | `{"course": str}` | `{course, prerequisite, distance}`; distance 1 = direct prerequisite, 2+ = indirect |
+| `topics_in_course` | `{"course": str}` | `{course, topic, description}` |
+| `resources_for_topic` | `{"topic": str}` | `{topic, title, url, type}` |
+| `courses_in_subject` | `{"subject": str}` | `{subject, course, code}` |
+| `strategies_for_topic` (extra) | `{"topic": str}` | `{topic, strategy, description}` |
+| `topic_prerequisites` (extra) | `{"topic": str}` | `{topic, requires, distance}` |
+
+Notes: matching is case-insensitive; surrounding spaces are ignored. Valid values are in `data/graph_seed/`
+(courses e.g. "Calculus II", "Linear Algebra", "Data Structures and Algorithms"; subjects: "Mathematics", "Programming").
 
 - Unknown entity -> `{"status": "ok", "data": {"rows": []}}` (not an error).
 - Failure examples: unknown `query_type`, missing params, Neo4j unreachable.
@@ -95,6 +100,7 @@ Success:
 (Resource)-[:COVERS]->(Topic)
 (Topic)-[:BEST_STUDIED_WITH]->(Strategy)
 ```
+Schema note: `A-[:PREREQUISITE_OF]->B` = take A before B.  `A-[:REQUIRES]->B` = learn B before A.
 
 Also in `src/graphdb/schema.cypher`.
 
