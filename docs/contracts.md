@@ -52,12 +52,17 @@ Success:
 
 ```json
 {"status": "ok",
- "data": {"results": [{"text": "...", "source": "active_recall.md", "score": 0.82}]}}
+ "data": {"results": [{"text": "...", "source": "06_Active_Recall_Spaced_Repetition_Guide.pdf",
+                       "title": "Active Recall Spaced Repetition Guide", "page": 2,
+                       "chunk_id": "06_Active_Recall_Spaced_Repetition_Guide_page_2_chunk_0",
+                       "score": 0.8213}]}}
 ```
 
-- `score`: higher = more relevant (TODO Member 3: document how it is computed).
-- `source` must come from the chunk metadata written by `build_index.py` (never invented).
-- Failure examples: empty query, invalid `k`, index missing/empty.
+- `score`: cosine similarity between the query and the chunk, in [-1, 1]; **higher = more relevant**, `1.0` = same direction. Chroma stores cosine distance (`1 - similarity`); the tool converts it. Results are sorted best first.
+- `source`, `title`, `page`, `chunk_id` come from the chunk metadata written by `build_index.py` (never invented). Chunks without a `source` are skipped.
+- `k`: integer from 1 to 10 (`MAX_K`). Fewer than `k` results are returned when the index holds fewer chunks.
+- `query`: non-empty string, at most 1000 characters after stripping spaces. English and Arabic both work.
+- Failure examples: empty or non-string query, query too long, invalid `k`, no index at `CHROMA_PATH` (or empty collection), embedding model unavailable. Each error message says what to fix (e.g., `python -m src.vectordb.build_index`).
 
 ## 3. Graph tool — `query_graph` (Member 4)
 

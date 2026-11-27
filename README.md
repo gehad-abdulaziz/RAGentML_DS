@@ -171,7 +171,37 @@ python -m src.vectordb.build_index
 **Known limitation:**
 - Initial retrieval tests showed stronger ranking for English queries than for some Arabic queries. Further retrieval evaluation and optimization may improve Arabic search results.
 ### Member 3 — RAG retrieval
-TODO
+
+Implemented `search_documents(query, k=3)` in `src/tools/vector_tool.py`. It searches the `study_guides` ChromaDB collection built by Member 2.
+
+**How it works:**
+- The query is embedded with the same model as the index (`paraphrase-multilingual-MiniLM-L12-v2`, normalised), so English and Arabic queries share one vector space.
+- Chroma returns cosine distance. The tool returns `score = 1 - distance` (cosine similarity, higher = more relevant), best first.
+- Each result has `text`, `source`, `title`, `page`, `chunk_id` and `score`, all taken from the chunk metadata.
+
+**How to run:**
+
+```bash
+python -m src.vectordb.build_index                          # once (Member 2); needs internet for the model
+python -m src.tools.vector_tool                             # demo, no agent needed
+pytest tests/test_vector_tool.py -v -rs | tee logs/vector_tool_tests.log
+```
+
+**Design decisions:**
+- Never raises. Every failure returns `{"status": "error", "error": ...}` with a message that says what to fix.
+- A missing index is reported, not silently created: the tool checks for `chroma.sqlite3` before opening the database.
+- The embedding model is loaded once and reused. Its import is deferred, so importing the module stays cheap.
+- `EMBEDDING_MODEL_NAME` is repeated in this file, and a test checks it matches `build_index.py`, so queries and chunks cannot use different models.
+- Input limits: `k` from 1 to 10; query at most 1000 characters.
+
+**Tests:**
+- 30 unit tests. They need no model: they use a small Chroma index with known vectors and a fake query embedder, so the expected ranking is exact.
+- 16 retrieval-quality tests: 8 English and 8 Arabic questions, each checking that the expected study guide is in the top 3 results. They skip with a reason when the index or model is missing.
+
+**Status and known limitations:**
+- **Retrieval quality on the real index is not measured yet.** The development environment could not download the embedding model, so the 16 quality tests were skipped. Record the per-query results here after running the command above on a machine with the model.
+- Arabic questions against English guides are cross-lingual retrieval, the case Member 2 flagged as weaker.
+- Ranking is pure embedding similarity. There is no keyword (hybrid) search or reranking.
 
 ### Member 4 — Graph tool
 
