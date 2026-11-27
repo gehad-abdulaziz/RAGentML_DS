@@ -30,3 +30,4 @@ logs/*.tmp
 .DS_Store
 .idea/
 .vscode/
+.langgraph_api/

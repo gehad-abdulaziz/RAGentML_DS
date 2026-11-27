@@ -1,51 +1,67 @@
-"""Builds the LangGraph graph.
+"""LangGraph workflow definition.
 
 Owner: Member 5 (feature/agent-core).
-
-Flow: START -> llm_node -> (conditional edge) -> tool_node -> llm_node ... -> END
-The loop stops when the LLM gives a final answer / asks the user for missing info, or when
-the iteration counter reaches MAX_ITERATIONS (5).
 """
 from __future__ import annotations
 
-from src.agent.state import AgentState
-from src.config import MAX_ITERATIONS  # noqa: F401  (used by the TODOs below)
+from typing import Literal
+
+from langgraph.graph import END, START, StateGraph
+
+from src import config
+from src.agent.nodes import agent_node, tools_node
+from src.agent.state import AgentState, initial_state
 
 
-def should_continue(state: AgentState) -> str:
-    """Conditional edge after llm_node.
+def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
+    """Route to 'tools' if the LLM issued tool calls; otherwise end."""
+    last_message = state["messages"][-1]
+    if getattr(last_message, "tool_calls", None):
+        return "tools"
+    return END
 
-    Returns "tools" to continue to tool_node, or "end" to finish.
 
-    TODO:
-      - if the last AI message has tool calls AND iteration < MAX_ITERATIONS -> "tools"
-      - otherwise -> "end" (final answer, question for the user, or iterations exhausted)
-      - decide how the exhaustion case still produces a final answer (what was found / unresolved)
-        e.g., a final forced LLM call without tools, or a dedicated "finalize" node
-    """
-    raise NotImplementedError("TODO (Member 5)")
+def after_tools_route(state: AgentState) -> Literal["agent"]:
+    """Always return to 'agent' after tool execution (agent handles MAX_ITERATIONS)."""
+    return "agent"
 
 
 def build_graph():
-    """Create and compile the LangGraph StateGraph.
+    """Compile and return the LangGraph academic advisor agent."""
+    workflow = StateGraph(AgentState)
 
-    TODO:
-      - graph = StateGraph(AgentState)
-      - add nodes "llm" (llm_node) and "tools" (tool_node)
-      - set entry point to "llm"
-      - add conditional edges from "llm" using should_continue: {"tools": "tools", "end": END}
-      - add edge "tools" -> "llm"
-      - return graph.compile()
-    """
-    raise NotImplementedError("TODO (Member 5)")
+    workflow.add_node("agent", agent_node)
+    workflow.add_node("tools", tools_node)
+
+    workflow.add_edge(START, "agent")
+    workflow.add_conditional_edges(
+        "agent",
+        should_continue,
+        {
+            "tools": "tools",
+            END: END,
+        },
+    )
+    workflow.add_edge("tools", "agent")
+
+    return workflow.compile()
 
 
-def run_agent(user_message: str) -> dict:
-    """Convenience entry point used by the CLI: run the graph for one user message.
+# Compiled graph instance ready to be imported by CLI / UI / tests
+agent_graph = build_graph()
 
-    TODO:
-      - create the initial state, invoke the compiled graph
-      - return {"answer": str, "iterations": int, "tool_results": list}
-      - never raise to the caller (catch and return a friendly error answer)
-    """
-    raise NotImplementedError("TODO (Member 5)")
+
+def run_agent(user_message: str) -> AgentState:
+    """Helper to run a single user turn through the compiled graph."""
+    state = initial_state(user_message)
+    return agent_graph.invoke(state)
+
+
+if __name__ == "__main__":
+    # Quick standalone test with qwen3:4b
+    test_query = "What are the prerequisites for Calculus II, and what topics are in Calculus I?"
+    print(f"User: {test_query}\n")
+    final_state = run_agent(test_query)
+    print(f"Iterations used: {final_state['iteration']}")
+    print(f"Tools called: {[r['tool'] for r in final_state['tool_results']]}")
+    print(f"\nAssistant:\n{final_state['messages'][-1].content}")

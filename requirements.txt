@@ -14,16 +14,12 @@ langchain-openai
 # Vector DB / embeddings
 chromadb
 sentence-transformers
-langchain-community
-langchain-text-splitters
-pypdf
-tiktoken
 
 # Graph DB
 neo4j
 
 # ML
-scikit-learn
+scikit-learn==1.7.2
 pandas
 numpy
 joblib
@@ -33,3 +29,7 @@ python-dotenv
 
 # Testing
 pytest
+
+langchain-community
+langchain-text-splitters
+pypdf
