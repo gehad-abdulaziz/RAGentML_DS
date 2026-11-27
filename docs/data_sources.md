@@ -39,8 +39,16 @@ Document text...
 
 | File | Contents | Source |
 |------|----------|--------|
-| TODO | TODO | TODO |
+| subjects.csv | 2 subjects (Mathematics, Programming) | Team-designed |
+| courses.csv | 8 courses with code and subject | Team-designed (course codes are fictional) |
+| topics.csv | 21 topics with short descriptions | Names taken from the headings of the PDFs in `data/documents/` |
+| strategies.csv | 9 study strategies | Names taken from the PDFs in `data/documents/` |
+| resources.csv | 15 learning resources with real URLs (checked with `python -m src.graphdb.check_links` and manually in a browser) | Khan Academy, MIT OCW, CS50, Python docs, etc. |
+| course_topics.csv, course_prerequisites.csv, topic_requires.csv, topic_strategies.csv, resource_topics.csv | Relationship files | Team-designed |
 
 ## Shared topic list (Members 2 & 4)
+Every name below appears literally in the PDFs in `data/documents/`.
 
-TODO: the agreed topic names used both in `data/documents/` metadata and in graph `Topic` nodes.
+Topics: Algebra, Functions and Graphs, Limits, Differentiation, Integration, Matrix Operations, Systems of Linear Equations, Eigenvalues and Eigenvectors, Probability, Probability Distributions, Statistical Inference, Variables, Data Types, and Operators, Conditional Statements and Loops, Functions, Arrays, Lists, and Strings, Debugging, Classes and Objects, Encapsulation and Inheritance, Data Structures, Searching and Sorting, Complexity Analysis.
+
+Strategies: Active Recall, Spaced Repetition, Practice-Based Learning, Step-by-Step Problem Solving, Deliberate Practice, Code Tracing, Project-Based Learning, Peer Explanation, Charting Method.
