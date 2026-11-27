@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 # --- Paths -------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(PROJECT_ROOT / ".env", override=True)  # load .env variables into os.environ
 
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
@@ -41,6 +41,6 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
 # --- ChromaDB ----------------------------------------------------------------
 _chroma_path = Path(os.getenv("CHROMA_PATH", "chroma_db"))
 CHROMA_PATH = _chroma_path if _chroma_path.is_absolute() else PROJECT_ROOT / _chroma_path
-CHROMA_COLLECTION = "study_guides"  # Shared collection used by ingestion and retrieval
+CHROMA_COLLECTION = "study_guides"  # TODO (Members 2 & 3): agree on the final name
 
 # TODO (Member 6): add shared constants if needed (e.g., LLM temperature, log file name).

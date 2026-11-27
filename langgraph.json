@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "academic_advisor": "./src/agent/graph.py:agent_graph"
+  },
+  "env": ".env"
+}
