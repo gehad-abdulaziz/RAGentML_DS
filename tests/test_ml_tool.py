@@ -22,7 +22,9 @@ from src.tools.ml_tool import predict_performance
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-MODEL_PATH = (
+# Per PDF page 4 specification
+MODEL_PATH = PROJECT_ROOT / "models" / "model.joblib"
+LEGACY_MODEL_PATH = (
     PROJECT_ROOT
     / "models"
     / "machine learning models"
@@ -32,14 +34,15 @@ MODEL_PATH = (
 
 @pytest.fixture(scope="session")
 def model_bundle():
-    """Load the saved All Features bundle."""
-    if not MODEL_PATH.exists():
+    """Load the saved model bundle."""
+    target_path = MODEL_PATH if MODEL_PATH.exists() else LEGACY_MODEL_PATH
+    if not target_path.exists():
         pytest.fail(
-            f"Model artifact not found: {MODEL_PATH}. "
-            "Run the training notebook before running these tests."
+            f"Model artifact not found: checked {MODEL_PATH} and {LEGACY_MODEL_PATH}. "
+            "Run 'python -m src.ml.train_model' before running these tests."
         )
 
-    return joblib.load(MODEL_PATH)
+    return joblib.load(target_path)
 
 
 @pytest.fixture
