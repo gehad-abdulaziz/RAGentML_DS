@@ -30,15 +30,33 @@ Success:
 
 ```json
 {"status": "ok",
- "data": {"prediction": 72.4, "unit": "exam score (0-100)", "inputs_used": {"Hours_Studied": 20, "Attendance": 90, "Sleep_Hours": 7}}}
+ "data": {"prediction": 72.4, "unit": "exam_score", "inputs_used": {"Hours_Studied": 20, "Attendance": 90, "Sleep_Hours": 7}}}
 ```
 
-- Validates required features and value ranges (TODO Member 1: list them below).
+- Validates required features and value ranges.
 - Failure examples: missing feature, value out of range, wrong type, model file not found.
 
-| Feature | Type | Allowed range | Required |
-|---------|------|---------------|----------|
-| TODO | TODO | TODO | TODO |
+| Feature | Type | Allowed range / Categories | Required |
+|---------|------|---------------------------|----------|
+| `Hours_Studied` | float / int | [0, 100] | Yes |
+| `Attendance` | float / int | [0, 100] | Yes |
+| `Sleep_Hours` | float / int | [0, 24] | Yes |
+| `Previous_Scores` | float / int | [0, 100] | Yes |
+| `Tutoring_Sessions` | float / int | [0, 20] | Yes |
+| `Physical_Activity` | float / int | [0, 30] | Yes |
+| `Parental_Involvement` | str | ["Low", "Medium", "High"] | Yes |
+| `Access_to_Resources` | str | ["Low", "Medium", "High"] | Yes |
+| `Motivation_Level` | str | ["Low", "Medium", "High"] | Yes |
+| `Family_Income` | str | ["Low", "Medium", "High"] | Yes |
+| `Teacher_Quality` | str | ["Low", "Medium", "High"] | Yes |
+| `Peer_Influence` | str | ["Negative", "Neutral", "Positive"] | Yes |
+| `Parental_Education_Level` | str | ["High School", "College", "Postgraduate"] | Yes |
+| `Distance_from_Home` | str | ["Near", "Moderate", "Far"] | Yes |
+| `Extracurricular_Activities` | str | ["Yes", "No"] | Yes |
+| `Internet_Access` | str | ["Yes", "No"] | Yes |
+| `School_Type` | str | ["Public", "Private"] | Yes |
+| `Learning_Disabilities` | str | ["Yes", "No"] | Yes |
+| `Gender` | str | ["Male", "Female"] | Yes |
 
 ## 2. Vector tool — `search_documents` (Member 3)
 

@@ -4,14 +4,13 @@ Shared document. Each member edits only the section for their own part.
 
 ## 1. ML dataset (Member 1)
 
-- Candidates: Kaggle "Student Performance Factors" (target `Exam_Score`; features such as `Hours_Studied`, `Attendance`, `Sleep_Hours`), or UCI "Student Performance" (student-mat).
-- **Chosen dataset:** TODO
-- **URL:** TODO
-- **License:** TODO
-- **Target:** TODO
-- **Features used:** TODO
-- **Preprocessing notes:** TODO
-- Raw file location: `data/raw/` (large raw files are git-ignored; document how to download them here).
+- **Chosen dataset:** Kaggle "Student Performance Factors" (`StudentPerformanceFactors.csv`)
+- **URL:** https://www.kaggle.com/datasets/lainguyn123/student-performance-factors
+- **License:** Open Database License (ODbL) / Public Domain
+- **Target:** `Exam_Score` (continuous numeric score 0-100)
+- **Features used:** 19 student factors (6 numerical, 8 ordinal categorical, 5 nominal categorical).
+- **Preprocessing notes:** Missing numericals imputed with median and scaled via `StandardScaler`; ordinal features encoded via `OrdinalEncoder` with domain ordering; nominal features one-hot encoded with `OneHotEncoder(handle_unknown='ignore')`. Pipeline wrapped in scikit-learn `ColumnTransformer`.
+- Raw file location: `data/raw/StudentPerformanceFactors.csv` (git-ignored, downloadable via Kaggle).
 
 ## 2. Study-guide documents for the vector DB (Member 2)
 

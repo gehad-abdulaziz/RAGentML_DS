@@ -38,14 +38,18 @@ flowchart TD
 
 ## Loop rules
 
-- TODO (Member 5): exact stop conditions and how the iteration limit produces a final answer.
-- TODO (Member 5): how "ask user for missing info" ends a turn and resumes on the next user message.
+- **5-Iteration Limit:** The agent loop is constrained by `config.MAX_ITERATIONS = 5`.
+- **Termination conditions:**
+  1. The LLM produces a response without tool calls (answering directly or asking the user for missing information) -> routes to `END`.
+  2. The LLM requests tools and `iteration < 5` -> routes to `tool_node` -> returns to `llm_node`.
+  3. The LLM requests tools and `iteration >= 5` -> routes to `force_final_node` -> generates plain-text synthesis summarizing what was found and what remains unresolved -> routes to `END`.
+- **Interactive Multi-Turn Resumption:** When asking the user for missing parameters (e.g. key study habits), the agent finishes its turn. When the student replies, the CLI passes the accumulated conversation history so the agent resumes with full context.
 
 ## Error handling
 
-- Tools never raise; they return `{"status": "error", "error": "..."}`.
-- `tool_node` additionally catches unexpected exceptions and converts them to the same error dict.
-- TODO (Member 5): how the LLM is told about errors and how repeated failures are handled.
+- Tools never raise unhandled exceptions; they return `{"status": "error", "error": "..."}`.
+- `tool_node` additionally wraps any tool execution in a try/except safety net.
+- When an error occurs, the structured JSON error is returned as a `ToolMessage` to the LLM, enabling it to explain the error or ask the student for corrected values.
 
 ## Logging
 

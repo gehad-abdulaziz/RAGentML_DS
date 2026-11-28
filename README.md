@@ -131,7 +131,18 @@ Summary (full rules in [CONTRIBUTING.md](CONTRIBUTING.md), ownership in [docs/te
 Each member fills in **only their own section** (what they built, how to run it, design decisions, known limitations).
 
 ### Member 1 — ML tool
-TODO
+
+Implemented the academic performance prediction pipeline and tool interface.
+- **Model:** Compared Linear Regression, Random Forest, and Extra Trees Regressor using 5-fold CV and train/val/test splits (70/15/15). The best model is serialized to `models/model.joblib`.
+- **Pipeline:** Built full scikit-learn `ColumnTransformer` with median imputation, `StandardScaler`, and categorical encoders.
+- **Tool:** Created `predict_performance(features)` in `src/tools/ml_tool.py` adhering to the tool contract (`status`, `prediction`, `unit`, `inputs_used`). The tool never raises and validates numeric ranges and categories.
+- **Execution:**
+  ```bash
+  python -m src.ml.prepare_data
+  python -m src.ml.train_model
+  python -m src.tools.ml_tool
+  pytest tests/test_ml_tool.py -v
+  ```
 
 ### Member 2 — RAG ingestion
 
@@ -231,7 +242,21 @@ python -m pytest tests/test_graph_tool.py -v | tee logs/graph_tool_tests.log
 **Known limitations:** small hand-made graph; course codes are fictional; only Python-based programming resources.
 
 ### Member 5 — Agent core (LangGraph)
-TODO
+
+Implemented the state graph and decision control loop using LangGraph.
+- **State definition:** Built `AgentState` containing `messages` (with `add_messages` reducer), `tool_results`, and `iteration` counter.
+- **Nodes & Flow:** Created `llm_node`, `tool_node`, and `force_final_node` in `src/agent/nodes.py`.
+- **Graph Routing:** Configured conditional edges in `src/agent/graph.py` enforcing:
+  - Tool request and `iteration < 5` -> `tool_node`
+  - Tool request and `iteration >= 5` -> `force_final_node`
+  - No tool request (clarification / final answer) -> `END`
+- **Verification:** Tested loop boundaries, early stopping, and error recovery in `tests/test_agent.py`.
 
 ### Member 6 — Agent interface (LLM, registry, prompts, logging, CLI)
-TODO
+
+Built the peripheral infrastructure and user interface.
+- **Tool Registry:** Wrapped tools as LangChain `StructuredTool` with Pydantic validation schemas in `src/tools/__init__.py`.
+- **Mocks:** Created deterministic mocks in `src/tools/mock_tools.py` for parallel development and CI testing.
+- **Prompts & Guardrails:** Designed anti-hallucination system prompt in `src/agent/prompts.py` enforcing tool grounding and citations.
+- **Logging:** Structured logging per iteration to console and `logs/agent.log` with sensitive key masking.
+- **CLI:** Interactive terminal interface in `src/app/cli.py` with multi-turn conversation memory and educational disclaimer.
