@@ -145,30 +145,33 @@ def test_missing_info_asks_user(monkeypatch):
 
 def test_tool_error_does_not_crash(monkeypatch):
     """Scenario 5: Forced tool error -> agent handles error dict gracefully and provides an answer."""
-    set_mock_force_error(True, "Simulated database connection failure")
+    try:
+        set_mock_force_error(True, "Simulated database connection failure")
 
-    msg1 = AIMessage(
-        content="",
-        tool_calls=[
-            {
-                "name": "query_graph",
-                "args": {"query_type": "prerequisites", "params": {"course": "Calculus II"}},
-                "id": "call_graph_err",
-            }
-        ],
-    )
-    msg2 = AIMessage(
-        content="I encountered a temporary database error while retrieving prerequisites. However, typically Calculus I is required before Calculus II."
-    )
+        msg1 = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "query_graph",
+                    "args": {"query_type": "prerequisites", "params": {"course": "Calculus II"}},
+                    "id": "call_graph_err",
+                }
+            ],
+        )
+        msg2 = AIMessage(
+            content="I encountered a temporary database error while retrieving prerequisites. However, typically Calculus I is required before Calculus II."
+        )
 
-    mock_llm = ScriptedChatModel(scripted_responses=[msg1, msg2])
-    monkeypatch.setattr("src.agent.nodes.get_llm", lambda *a, **kw: mock_llm)
+        mock_llm = ScriptedChatModel(scripted_responses=[msg1, msg2])
+        monkeypatch.setattr("src.agent.nodes.get_llm", lambda *a, **kw: mock_llm)
 
-    state = run_agent("What are the prerequisites for Calculus II?")
-    assert state["iteration"] <= config.MAX_ITERATIONS
-    assert len(state["tool_results"]) == 1
-    assert state["tool_results"][0]["output"]["status"] == "error"
-    assert "error" in state["tool_results"][0]["output"]
+        state = run_agent("What are the prerequisites for Calculus II?")
+        assert state["iteration"] <= config.MAX_ITERATIONS
+        assert len(state["tool_results"]) == 1
+        assert state["tool_results"][0]["output"]["status"] == "error"
+        assert "error" in state["tool_results"][0]["output"]
+    finally:
+        set_mock_force_error(False)
 
 
 def test_invalid_input_handled(monkeypatch):
@@ -250,6 +253,10 @@ def test_iteration_never_exceeds_max(monkeypatch):
 
 def test_final_answer_grounded_in_tool_results(monkeypatch):
     """Scenario 9: Grounding: values and citations in final answer match tool outputs."""
+    from src.tools.mock_tools import mock_predict_performance
+
+    expected_score = mock_predict_performance({"Hours_Studied": 15, "Attendance": 80})["data"]["prediction"]
+
     msg1 = AIMessage(
         content="",
         tool_calls=[
@@ -261,7 +268,7 @@ def test_final_answer_grounded_in_tool_results(monkeypatch):
         ],
     )
     msg2 = AIMessage(
-        content="Based on your 15 hours of study and 80% attendance, your predicted score is 65.5 points out of 100."
+        content=f"Based on your 15 hours of study and 80% attendance, your predicted score is {expected_score} points out of 100."
     )
 
     mock_llm = ScriptedChatModel(scripted_responses=[msg1, msg2])
