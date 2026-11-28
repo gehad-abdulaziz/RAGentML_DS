@@ -25,7 +25,9 @@ import pandas as pd
 # Project paths
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-MODEL_PATH = (
+# Standard model path according to project PDF specifications (page 4)
+MODEL_PATH = PROJECT_ROOT / "models" / "model.joblib"
+LEGACY_MODEL_PATH = (
     PROJECT_ROOT
     / "models"
     / "machine learning models"
@@ -66,14 +68,15 @@ NOMINAL_CATEGORIES = {
 
 @lru_cache(maxsize=1)
 def load_model():
-    """Load the saved All Features model bundle once."""
-    if not MODEL_PATH.exists():
+    """Load the saved model bundle (preferring models/model.joblib per course PDF)."""
+    target_path = MODEL_PATH if MODEL_PATH.exists() else LEGACY_MODEL_PATH
+    if not target_path.exists():
         raise FileNotFoundError(
-            f"Model file not found: {MODEL_PATH}. "
-            "Run the training notebook first."
+            f"Model file not found: checked {MODEL_PATH} and {LEGACY_MODEL_PATH}. "
+            "Run 'python -m src.ml.train_model' first."
         )
 
-    return joblib.load(MODEL_PATH)
+    return joblib.load(target_path)
 
 
 def _is_missing(value):

@@ -100,8 +100,7 @@ def train(data_path: str | Path | None = None,
 
     destination = (
         Path(model_path) if model_path is not None
-        else Path(__file__).resolve().parents[2]
-             / "models" / "machine learning models" / "all_features_model.joblib"
+        else Path(__file__).resolve().parents[2] / "models" / "model.joblib"
     )
     destination.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(bundle, destination)
