@@ -1,76 +1,94 @@
-"""Per-iteration structured logging (console + JSON lines file in logs/).
+"""Per-iteration structured logging (console + file in logs/).
 
-Owner: Member 6 (feature/agent-interface).
+Every iteration logs: iteration number, short reasoning (if the model gave any),
+selected action, tool input, tool output.  One JSON object per line is appended to
+`logs/agent.log` (UTF-8) and a readable line is printed to the console.
 
-Every iteration logs: iteration number, selected action, optional reasoning,
-tool name, tool input, tool output.
+Log line format (JSON Lines):
+    {"ts": "2026-11-28T12:00:00", "event": "iteration", "iteration": 1,
+     "action": "call_tool", "reasoning": "...", "tool": "query_graph",
+     "input": {...}, "output": {...}, "user_id": 3, "session_id": "ab12..."}
+
+action is one of: "call_tool" | "ask_user" | "final_answer" | "blocked".
+API keys, passwords, e-mails and phone numbers are redacted before writing.
+Logging never raises: a broken log must not break the agent.
 """
 from __future__ import annotations
 
 import json
 import logging
+import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from src import config
 
-_current_log_file: Path | None = None
-_logger_initialized = False
+_FILE_LOGGER = "agent.file"
+_CONSOLE_LOGGER = "agent.console"
+_state: dict[str, Any] = {"ready": False, "file": None}
+
+MAX_FILE_FIELD_CHARS = 20000
+MAX_CONSOLE_FIELD_CHARS = 300
 
 
-def _sanitize(obj: Any) -> Any:
-    """Mask sensitive fields such as API keys and secrets."""
-    if isinstance(obj, dict):
-        sanitized = {}
-        for k, v in obj.items():
-            if any(secret_term in k.lower() for secret_term in ("key", "secret", "password", "token")):
-                sanitized[k] = "***REDACTED***"
-            else:
-                sanitized[k] = _sanitize(v)
-        return sanitized
-    elif isinstance(obj, list):
-        return [_sanitize(item) for item in obj]
-    return obj
+def _redact(text: str) -> str:
+    from src.agent.middleware import redact_sensitive  # local import: avoid cycles
+
+    return redact_sensitive(text)
 
 
-def setup_logger(log_file: str | Path | None = None) -> Path:
-    """Configure console + file logging.
+def setup_logger(log_file: str | Path | None = None, console: bool = True,
+                 level: int = logging.INFO) -> None:
+    """Configure console + file logging (safe to call many times)."""
+    path = Path(log_file) if log_file else Path(config.AGENT_LOG_FILE)
+    path.parent.mkdir(parents=True, exist_ok=True)
 
-    Writes to logs/agent.log (or given path). Never logs API keys.
-    """
-    global _current_log_file, _logger_initialized
+    file_logger = logging.getLogger(_FILE_LOGGER)
+    file_logger.setLevel(level)
+    file_logger.propagate = False
+    for handler in list(file_logger.handlers):
+        handler.close()
+        file_logger.removeHandler(handler)
+    handler = logging.FileHandler(path, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    file_logger.addHandler(handler)
 
-    if log_file:
-        target_path = Path(log_file)
-        if not target_path.is_absolute():
-            target_path = config.LOGS_DIR / target_path
-    else:
-        target_path = config.LOGS_DIR / config.LOG_FILE_NAME
+    console_logger = logging.getLogger(_CONSOLE_LOGGER)
+    console_logger.setLevel(level)
+    console_logger.propagate = False
+    for h in list(console_logger.handlers):
+        console_logger.removeHandler(h)
+    if console:
+        stream = logging.StreamHandler(sys.stderr)
+        stream.setFormatter(logging.Formatter("%(message)s"))
+        console_logger.addHandler(stream)
 
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    _current_log_file = target_path
-
-    # Configure standard library logging handler if not already done
-    root_logger = logging.getLogger("ragentml")
-    root_logger.setLevel(logging.INFO)
-
-    if not _logger_initialized:
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        formatter = logging.Formatter("[%(levelname)s] %(message)s")
-        console_handler.setFormatter(formatter)
-        root_logger.addHandler(console_handler)
-        _logger_initialized = True
-
-    return _current_log_file
+    _state["ready"] = True
+    _state["file"] = str(path)
 
 
-def get_current_log_file() -> Path:
-    """Return the active log file path, initializing default if needed."""
-    global _current_log_file
-    if _current_log_file is None:
-        return setup_logger()
-    return _current_log_file
+def _ensure() -> None:
+    if not _state["ready"] or _state["file"] != str(config.AGENT_LOG_FILE):
+        # first use (or tests changed the path): console off, file on
+        setup_logger(console=False)
+
+
+def _cut(value: Any, limit: int) -> Any:
+    text = json.dumps(value, ensure_ascii=False, default=str) if not isinstance(value, str) else value
+    if len(text) <= limit:
+        return value
+    return text[:limit] + "...[truncated]"
+
+
+def _write(record: dict[str, Any], console_line: str) -> None:
+    try:
+        _ensure()
+        line = _redact(json.dumps(record, ensure_ascii=False, default=str))
+        logging.getLogger(_FILE_LOGGER).info(line)
+        logging.getLogger(_CONSOLE_LOGGER).info(_redact(console_line))
+    except Exception:  # noqa: BLE001 - logging must never break the agent
+        pass
 
 
 def log_iteration(
@@ -78,41 +96,44 @@ def log_iteration(
     action: str,
     reasoning: str | None = None,
     tool_name: str | None = None,
-    tool_input: dict | None = None,
-    tool_output: dict | None = None,
+    tool_input: Any = None,
+    tool_output: Any = None,
+    user_id: Any = None,
+    session_id: str | None = None,
 ) -> None:
-    """Log one agent iteration as structured data.
-
-    action: "call_tool" | "ask_user" | "final_answer"
-    """
-    log_file = get_current_log_file()
-
-    entry: dict[str, Any] = {
+    """Log one agent iteration as structured data (console + logs/agent.log)."""
+    record = {
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "event": "iteration",
         "iteration": iteration,
         "action": action,
+        "reasoning": _cut(reasoning, 1000) if reasoning else None,
+        "tool": tool_name,
+        "input": _cut(tool_input, MAX_FILE_FIELD_CHARS),
+        "output": _cut(tool_output, MAX_FILE_FIELD_CHARS),
+        "user_id": user_id,
+        "session_id": session_id,
     }
-
-    if reasoning:
-        entry["reasoning"] = str(reasoning).strip()
+    parts = [f"[iter {iteration}] {action}"]
     if tool_name:
-        entry["tool"] = tool_name
+        parts.append(f"tool={tool_name}")
     if tool_input is not None:
-        entry["input"] = _sanitize(tool_input)
+        parts.append(f"input={_cut(tool_input, MAX_CONSOLE_FIELD_CHARS)}")
     if tool_output is not None:
-        entry["output"] = _sanitize(tool_output)
-
-    # 1. Console output: clean, readable line
-    console_parts = [f"[Agent] Iteration {iteration} | Action: {action}"]
-    if tool_name:
-        console_parts.append(f"| Tool: {tool_name}")
+        parts.append(f"output={_cut(tool_output, MAX_CONSOLE_FIELD_CHARS)}")
     if reasoning:
-        short_reason = reasoning[:100] + ("..." if len(reasoning) > 100 else "")
-        console_parts.append(f"| Reason: {short_reason}")
-    print(" ".join(console_parts))
+        parts.append(f"reasoning={_cut(reasoning, 160)}")
+    _write(record, " | ".join(str(p) for p in parts))
 
-    # 2. Append JSON line to log file
-    try:
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    except Exception as exc:
-        print(f"[Warning] Failed to write iteration log to {log_file}: {exc}")
+
+def log_event(event: str, user_id: Any = None, session_id: str | None = None, **fields: Any) -> None:
+    """Log a non-iteration event (guardrail hit, login, memory write, error ...)."""
+    record = {
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "event": event,
+        "user_id": user_id,
+        "session_id": session_id,
+        **fields,
+    }
+    detail = " ".join(f"{k}={_cut(v, 120)}" for k, v in fields.items())
+    _write(record, f"[{event}] {detail}")
