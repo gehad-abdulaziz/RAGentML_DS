@@ -1,0 +1,22 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0 -- D:\FourthYear_LAST_DANCE\DS\RAGentML_DS\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\FourthYear_LAST_DANCE\DS\RAGentML_DS
+plugins: anyio-4.16.0, langsmith-0.16.2
+python : ERROR: file or directory not found: tests/test_middleware.py
+At line:1 char:1
++ python -m pytest tests/test_middleware.py tests/test_memory_auth.py t ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR: file or ...t_middleware.py:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+collecting ... collected 0 items
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\langsmith\_internal\_beta_decorator.py:92: 17 warnings
+  D:\FourthYear_LAST_DANCE\DS\RAGentML_DS\.venv\Lib\site-packages\langsmith\_internal\_beta_decorator.py:92: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    if asyncio.iscoroutinefunction(func):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================ 17 warnings in 0.13s =============================

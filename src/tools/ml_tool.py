@@ -33,10 +33,34 @@ MODEL_PATH = (
 )
 
 
-# Basic numeric input limits.
-# These are validation limits, not values learned by the model.
+# Numeric validation limits
 NUMERIC_LIMITS = {
     "Hours_Studied": (0, 100),
+    "Attendance": (0, 100),
+    "Sleep_Hours": (0, 24),
+    "Previous_Scores": (0, 100),
+    "Tutoring_Sessions": (0, 20),
+    "Physical_Activity": (0, 30),
+}
+
+# Known valid categories
+ORDINAL_CATEGORIES = {
+    "Parental_Involvement": ["Low", "Medium", "High"],
+    "Access_to_Resources": ["Low", "Medium", "High"],
+    "Motivation_Level": ["Low", "Medium", "High"],
+    "Family_Income": ["Low", "Medium", "High"],
+    "Teacher_Quality": ["Low", "Medium", "High"],
+    "Peer_Influence": ["Negative", "Neutral", "Positive"],
+    "Parental_Education_Level": ["High School", "College", "Postgraduate"],
+    "Distance_from_Home": ["Near", "Moderate", "Far"],
+}
+
+NOMINAL_CATEGORIES = {
+    "Extracurricular_Activities": ["Yes", "No"],
+    "Internet_Access": ["Yes", "No"],
+    "School_Type": ["Public", "Private"],
+    "Learning_Disabilities": ["Yes", "No"],
+    "Gender": ["Male", "Female"],
 }
 
 
@@ -173,6 +197,25 @@ def predict_performance(features: dict) -> dict:
                     )
                 }
 
+            # Validate against allowed category values
+            if column in ORDINAL_CATEGORIES and value not in ORDINAL_CATEGORIES[column]:
+                return {
+                    "status": "error",
+                    "error": (
+                        f"Feature '{column}' has invalid value {value!r}. "
+                        f"Allowed categories: {ORDINAL_CATEGORIES[column]}."
+                    )
+                }
+
+            if column in NOMINAL_CATEGORIES and value not in NOMINAL_CATEGORIES[column]:
+                return {
+                    "status": "error",
+                    "error": (
+                        f"Feature '{column}' has invalid value {value!r}. "
+                        f"Allowed categories: {NOMINAL_CATEGORIES[column]}."
+                    )
+                }
+
         # 7. Build input DataFrame in original training order
         input_data = pd.DataFrame(
             [inputs_used],
@@ -189,7 +232,7 @@ def predict_performance(features: dict) -> dict:
             "status": "ok",
             "data": {
                 "prediction": prediction,
-                "unit": "exam_score",
+                "unit": "exam score (0-100)",
                 "inputs_used": inputs_used
             }
         }

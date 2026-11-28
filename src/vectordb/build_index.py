@@ -5,14 +5,12 @@ from sentence_transformers import SentenceTransformer
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from src.config import DOCUMENTS_DIR, CHROMA_PATH, CHROMA_COLLECTION
+from src.config import DOCUMENTS_DIR, CHROMA_PATH, CHROMA_COLLECTION, EMBEDDING_MODEL_NAME
 
 
 # --------------------------------------------------
 # Configuration
 # --------------------------------------------------
-
-EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 80
@@ -27,6 +25,18 @@ categories = {
     "07": "note_taking",
     "08": "motivation",
     "09": "feedback_goal_setting"
+}
+
+document_topics = {
+    "01": "Academic Performance",
+    "02": "Mathematics",
+    "03": "Programming",
+    "04": "Time Management",
+    "05": "Exam Preparation",
+    "06": "Active Recall",
+    "07": "Note Taking",
+    "08": "Study Motivation",
+    "09": "Goal Setting",
 }
 
 chunk_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
@@ -65,6 +75,7 @@ def load_documents(documents_dir: str = None) -> list[dict]:
 
         prefix = file_path.name[:2]
         category = categories.get(prefix, "general")
+        topic = document_topics.get(prefix, "General")
 
         title = file_path.stem[3:].replace("_", " ")
 
@@ -75,6 +86,7 @@ def load_documents(documents_dir: str = None) -> list[dict]:
                 "source": file_path.name,
                 "title": title,
                 "category": category,
+                "topic": topic,
                 "page": page.metadata.get("page", 0) + 1
             })
 
@@ -114,6 +126,7 @@ def chunk_document(
             "source": doc["source"],
             "title": doc["title"],
             "category": doc["category"],
+            "topic": doc.get("topic", "General"),
             "page": doc["page"],
             "chunk_id": (
                 f"{Path(doc['source']).stem}_"
@@ -161,6 +174,7 @@ def build_index() -> None:
             "source": chunk["source"],
             "title": chunk["title"],
             "category": chunk["category"],
+            "topic": chunk.get("topic", "General"),
             "page": chunk["page"],
             "chunk_id": chunk["chunk_id"]
         }
@@ -183,7 +197,13 @@ def build_index() -> None:
         path=str(CHROMA_PATH)
     )
 
-    collection = client.get_or_create_collection(
+    try:
+        client.delete_collection(name=CHROMA_COLLECTION)
+        print(f"Deleted existing collection '{CHROMA_COLLECTION}' for clean rebuild.")
+    except Exception:
+        pass
+
+    collection = client.create_collection(
         name=CHROMA_COLLECTION,
         metadata={"hnsw:space": "cosine"}
     )

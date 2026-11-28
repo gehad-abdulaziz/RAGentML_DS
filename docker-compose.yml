@@ -13,7 +13,7 @@ services:
       - "7687:7687"   # Bolt (used by the neo4j Python driver)
     environment:
       # TODO: keep in sync with .env (format: user/password)
-      - NEO4J_AUTH=neo4j/change-me-please
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-change-me-please}
     volumes:
       - neo4j_data:/data
     restart: unless-stopped

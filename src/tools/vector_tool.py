@@ -25,7 +25,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 
 from src import config
 
@@ -33,10 +36,8 @@ MAX_K = 10                # upper bound for k (keeps the LLM context small)
 MAX_QUERY_CHARS = 1000    # longer text is rejected, not silently truncated
 INDEX_HINT = "Build the index first with: python -m src.vectordb.build_index"
 
-# Must match EMBEDDING_MODEL_NAME in src/vectordb/build_index.py. It is repeated here
-# instead of imported so that importing this module does not load torch or the PDF
-# splitter. tests/test_vector_tool.py checks that the two values are identical.
-EMBEDDING_MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+# Must match EMBEDDING_MODEL_NAME in src/vectordb/build_index.py and src/config.py
+EMBEDDING_MODEL_NAME = getattr(config, "EMBEDDING_MODEL_NAME", "paraphrase-multilingual-MiniLM-L12-v2")
 
 _embedding_model: Any = None   # loaded on first use, then reused
 _clients: dict[str, Any] = {}  # one Chroma client per database path
@@ -71,6 +72,8 @@ def _get_client(path: Path) -> Any:
 
 def _open_collection() -> tuple[Any, str | None]:
     """Return (collection, None) or (None, error message). Never creates a new index."""
+    if chromadb is None:
+        return None, "ChromaDB package is not installed. Install with: pip install chromadb"
     path = Path(config.CHROMA_PATH)
     # Check for the database file first. PersistentClient would silently create an
     # empty database in a missing folder, and that would hide the real problem.

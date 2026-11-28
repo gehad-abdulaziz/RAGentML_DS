@@ -8,158 +8,107 @@ import json
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from langchain_core.tools import StructuredTool
-from langchain_ollama import ChatOllama
 
 from src import config
-from src.agent.prompts import (
-    GRAPH_TOOL_DESCRIPTION,
-    MAX_ITERATIONS_PROMPT,
-    ML_TOOL_DESCRIPTION,
-    RAG_TOOL_DESCRIPTION,
-    SYSTEM_PROMPT,
-)
+from src.agent.llm import get_llm
+from src.agent.logger import log_iteration
+from src.agent.prompts import MAX_ITERATIONS_PROMPT, SYSTEM_PROMPT
 from src.agent.state import AgentState
-from src.tools.graph_tool import query_graph
-from src.tools.ml_tool import predict_performance
-from src.tools.vector_tool import search_documents
+from src.tools import get_tool_map, get_tools
 
-# Baseline defaults for secondary features so students only provide key metrics
-DEFAULT_STUDENT_FEATURES: dict[str, Any] = {
-    "Hours_Studied": 15,
-    "Attendance": 85,
-    "Parental_Involvement": "Medium",
-    "Access_to_Resources": "Medium",
-    "Extracurricular_Activities": "Yes",
-    "Sleep_Hours": 7,
-    "Previous_Scores": 75,
-    "Motivation_Level": "Medium",
-    "Internet_Access": "Yes",
-    "Tutoring_Sessions": 1,
-    "Family_Income": "Medium",
-    "Teacher_Quality": "Medium",
-    "School_Type": "Public",
-    "Peer_Influence": "Neutral",
-    "Physical_Activity": 3,
-    "Learning_Disabilities": "No",
-    "Parental_Education_Level": "College",
-    "Distance_from_Home": "Near",
-    "Gender": "Male",
-}
+# Initialize tools and registry
+TOOLS = get_tools()
+TOOLS_BY_NAME = get_tool_map()
 
 
-def predict_student_score(features: dict[str, Any]) -> dict[str, Any]:
-    """Wrapper around Member 1's ML tool that fills unmentioned features with baseline defaults."""
-    if not isinstance(features, dict):
-        return {"status": "error", "error": "features must be a dictionary."}
-
-    merged_features = {**DEFAULT_STUDENT_FEATURES, **features}
-    defaulted_keys = [k for k in DEFAULT_STUDENT_FEATURES if k not in features]
-
-    result = predict_performance(merged_features)
-    if result.get("status") == "ok":
-        result["data"]["assumed_defaults"] = defaulted_keys
-    return result
+def _get_agent_llm(bind_tools: bool = True):
+    """Obtain the configured LLM and optionally bind available tools."""
+    llm = get_llm()
+    if bind_tools:
+        # Re-fetch in case tools or mock mode changed
+        tools = get_tools()
+        return llm.bind_tools(tools)
+    return llm
 
 
-# Wrap team functions as LangChain StructuredTools with rich descriptions
-ml_langchain_tool = StructuredTool.from_function(
-    func=predict_student_score,
-    name="predict_performance",
-    description=ML_TOOL_DESCRIPTION,
-)
-
-graph_langchain_tool = StructuredTool.from_function(
-    func=query_graph,
-    name="query_graph",
-    description=GRAPH_TOOL_DESCRIPTION,
-)
-
-rag_langchain_tool = StructuredTool.from_function(
-    func=search_documents,
-    name="search_documents",
-    description=RAG_TOOL_DESCRIPTION,
-)
-
-TOOLS = [ml_langchain_tool, graph_langchain_tool, rag_langchain_tool]
-TOOLS_BY_NAME = {tool.name: tool for tool in TOOLS}
-
-
-def _get_llm(bind_tools: bool = True):
-    """Initialize the local Ollama model (qwen3:4b by default)."""
-    model_name = config.LLM_MODEL or "qwen3:4b"
-    llm = ChatOllama(
-        model=model_name,
-        temperature=0.1,  # low temperature for reliable JSON tool arguments
-    )
-    return llm.bind_tools(TOOLS) if bind_tools else llm
-
-
-def _needs_ml_guardrail(state: AgentState, response: AIMessage) -> bool:
-    """Detect if the model tried to guess an exam score without calling predict_performance."""
-    if getattr(response, "tool_calls", None):
-        return False
-
-    tools_used = {r["tool"] for r in state.get("tool_results", [])}
-    if "predict_performance" in tools_used:
-        return False
-
-    last_user_msg = next(
-        (m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)),
-        "",
-    ).lower()
-
-    ml_keywords = ("predict", "exam score", "what score", "predicted score")
-    return any(kw in last_user_msg for kw in ml_keywords)
-
-
-def agent_node(state: AgentState) -> dict[str, Any]:
-    """Invoke the LLM to decide the next step (tool call or final answer)."""
+def llm_node(state: AgentState) -> dict[str, Any]:
+    """Invoke the LLM bound with tools to decide next step.
+    
+    Increments iteration counter when tool calls are requested.
+    """
     current_iter = state.get("iteration", 0)
     messages = [SystemMessage(content=SYSTEM_PROMPT), *state["messages"]]
 
-    # If max iterations reached, force a final plain-text answer without tools
-    if current_iter >= config.MAX_ITERATIONS:
-        messages.append(
-            HumanMessage(
-                content=(
-                    f"{MAX_ITERATIONS_PROMPT} "
-                    "Write your final response in plain text for the student. "
-                    "Do NOT output JSON or tool call syntax."
-                )
-            )
-        )
-        llm = _get_llm(bind_tools=False)
-        response = llm.invoke(messages)
-        return {"messages": [response]}
-
-    llm = _get_llm(bind_tools=True)
+    llm = _get_agent_llm(bind_tools=True)
     response = llm.invoke(messages)
 
-    # Guardrail: prevent hallucinated scores when predict_performance was skipped
-    if _needs_ml_guardrail(state, response):
-        correction_messages = [
-            *messages,
-            response,
-            HumanMessage(
-                content=(
-                    "SYSTEM CHECK: You have NOT called `predict_performance` yet. "
-                    "Do NOT guess or calculate the score yourself. Call `predict_performance` "
-                    "now with the student's mentioned features before giving the final answer."
-                )
-            ),
-        ]
-        response = llm.invoke(correction_messages)
+    has_tool_calls = bool(getattr(response, "tool_calls", None))
 
-    # Increment iteration only when the model decides to execute tools
-    next_iter = current_iter + 1 if getattr(response, "tool_calls", None) else current_iter
-    return {
-        "messages": [response],
-        "iteration": next_iter,
-    }
+    if has_tool_calls:
+        next_iter = current_iter + 1
+        for call in response.tool_calls:
+            log_iteration(
+                iteration=next_iter,
+                action="call_tool",
+                reasoning="Agent requested tool execution.",
+                tool_name=call.get("name"),
+                tool_input=call.get("args"),
+            )
+        return {
+            "messages": [response],
+            "iteration": next_iter,
+        }
+    else:
+        # No tool calls: either asking user for missing info or final answer
+        content = str(getattr(response, "content", "")).strip()
+        is_asking = "?" in content or any(
+            phrase in content.lower()
+            for phrase in ("please provide", "could you share", "how many hours", "what is your")
+        )
+        action = "ask_user" if is_asking else "final_answer"
+        log_iteration(
+            iteration=current_iter,
+            action=action,
+            reasoning=content[:120] if content else None,
+        )
+        return {
+            "messages": [response],
+            "iteration": current_iter,
+        }
 
 
-def tools_node(state: AgentState) -> dict[str, Any]:
+# Backwards compatibility alias
+agent_node = llm_node
+
+
+def force_final_node(state: AgentState) -> dict[str, Any]:
+    """Invoked when maximum iterations (5) are reached.
+    
+    Requests a final plain-text answer without tool calls summarizing what was found
+    and what remains unresolved, exactly per course requirements.
+    """
+    current_iter = state.get("iteration", config.MAX_ITERATIONS)
+    messages = [SystemMessage(content=SYSTEM_PROMPT), *state["messages"]]
+
+    forced_prompt = (
+        f"{MAX_ITERATIONS_PROMPT} "
+        "Synthesize your final response for the student based on everything found so far. "
+        "Explicitly summarize what was found and what remains unresolved. "
+        "Write your final response in clear plain text without tool calls or JSON."
+    )
+    messages.append(HumanMessage(content=forced_prompt))
+    llm = _get_agent_llm(bind_tools=False)
+    response = llm.invoke(messages)
+
+    log_iteration(
+        iteration=current_iter,
+        action="final_answer",
+        reasoning="Forced final answer reached at iteration limit.",
+    )
+    return {"messages": [response], "iteration": current_iter}
+
+
+def tool_node(state: AgentState) -> dict[str, Any]:
     """Execute requested tools, record structured outputs, and return ToolMessages."""
     last_message = state["messages"][-1]
     if not isinstance(last_message, AIMessage) or not last_message.tool_calls:
@@ -169,16 +118,21 @@ def tools_node(state: AgentState) -> dict[str, Any]:
     new_tool_messages: list[ToolMessage] = []
     recorded_results: list[dict[str, Any]] = list(state.get("tool_results", []))
 
+    tools_map = get_tool_map()
+
     for call in last_message.tool_calls:
         tool_name = call["name"]
         tool_args = call.get("args", {})
         tool_call_id = call["id"]
 
-        tool = TOOLS_BY_NAME.get(tool_name)
+        tool = tools_map.get(tool_name)
         if tool is None:
             output = {"status": "error", "error": f"Unknown tool '{tool_name}'."}
         else:
-            output = tool.invoke(tool_args)
+            try:
+                output = tool.invoke(tool_args)
+            except Exception as exc:
+                output = {"status": "error", "error": f"Tool execution failed: {str(exc)}"}
 
         recorded_results.append(
             {
@@ -189,9 +143,26 @@ def tools_node(state: AgentState) -> dict[str, Any]:
             }
         )
 
+        log_iteration(
+            iteration=current_iter,
+            action="call_tool",
+            tool_name=tool_name,
+            tool_input=tool_args,
+            tool_output=output,
+        )
+
+        # Ensure content is a valid string representation of JSON
+        if isinstance(output, str):
+            content_str = output
+        else:
+            try:
+                content_str = json.dumps(output, ensure_ascii=False)
+            except Exception:
+                content_str = str(output)
+
         new_tool_messages.append(
             ToolMessage(
-                content=json.dumps(output, ensure_ascii=False),
+                content=content_str,
                 tool_call_id=tool_call_id,
                 name=tool_name,
             )
