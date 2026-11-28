@@ -21,13 +21,13 @@ import math
 import joblib
 import pandas as pd
 
+from src.tools.features import CATEGORIES, NUMERIC_RANGES
+
 
 # Project paths
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Standard model path according to project PDF specifications (page 4)
-MODEL_PATH = PROJECT_ROOT / "models" / "model.joblib"
-LEGACY_MODEL_PATH = (
+MODEL_PATH = (
     PROJECT_ROOT
     / "models"
     / "machine learning models"
@@ -35,48 +35,19 @@ LEGACY_MODEL_PATH = (
 )
 
 
-# Numeric validation limits
-NUMERIC_LIMITS = {
-    "Hours_Studied": (0, 100),
-    "Attendance": (0, 100),
-    "Sleep_Hours": (0, 24),
-    "Previous_Scores": (0, 100),
-    "Tutoring_Sessions": (0, 20),
-    "Physical_Activity": (0, 30),
-}
-
-# Known valid categories
-ORDINAL_CATEGORIES = {
-    "Parental_Involvement": ["Low", "Medium", "High"],
-    "Access_to_Resources": ["Low", "Medium", "High"],
-    "Motivation_Level": ["Low", "Medium", "High"],
-    "Family_Income": ["Low", "Medium", "High"],
-    "Teacher_Quality": ["Low", "Medium", "High"],
-    "Peer_Influence": ["Negative", "Neutral", "Positive"],
-    "Parental_Education_Level": ["High School", "College", "Postgraduate"],
-    "Distance_from_Home": ["Near", "Moderate", "Far"],
-}
-
-NOMINAL_CATEGORIES = {
-    "Extracurricular_Activities": ["Yes", "No"],
-    "Internet_Access": ["Yes", "No"],
-    "School_Type": ["Public", "Private"],
-    "Learning_Disabilities": ["Yes", "No"],
-    "Gender": ["Male", "Female"],
-}
-
+# Validation limits and allowed categories live in src/tools/features.py (shared contract).
+NUMERIC_LIMITS = NUMERIC_RANGES
 
 @lru_cache(maxsize=1)
 def load_model():
-    """Load the saved model bundle (preferring models/model.joblib per course PDF)."""
-    target_path = MODEL_PATH if MODEL_PATH.exists() else LEGACY_MODEL_PATH
-    if not target_path.exists():
+    """Load the saved All Features model bundle once."""
+    if not MODEL_PATH.exists():
         raise FileNotFoundError(
-            f"Model file not found: checked {MODEL_PATH} and {LEGACY_MODEL_PATH}. "
-            "Run 'python -m src.ml.train_model' first."
+            f"Model file not found: {MODEL_PATH}. "
+            "Run the training notebook first."
         )
 
-    return joblib.load(target_path)
+    return joblib.load(MODEL_PATH)
 
 
 def _is_missing(value):
@@ -87,11 +58,28 @@ def _is_missing(value):
         return False
 
 
+def _allowed_categories(bundle, column):
+    """Allowed values: from the saved bundle (ordinal) or the shared contract."""
+    ordinal = bundle.get("ordinal_categories") or {}
+    if isinstance(ordinal, dict) and column in ordinal:
+        return tuple(ordinal[column])
+    return CATEGORIES.get(column, ())
+
+
 def predict_performance(features: dict) -> dict:
     """Predict a student's academic performance from the given features.
 
     Args:
-        features: Dictionary containing the student's input features.
+        features: Dictionary containing ALL 19 input features.
+            Numeric (range):  Hours_Studied 0-100, Attendance 0-100, Previous_Scores 0-100,
+                              Tutoring_Sessions 0-30, Sleep_Hours 0-24, Physical_Activity 0-40
+            Categorical:      Parental_Involvement, Access_to_Resources, Motivation_Level,
+                              Family_Income, Teacher_Quality (Low|Medium|High);
+                              Extracurricular_Activities, Internet_Access,
+                              Learning_Disabilities (Yes|No); School_Type (Public|Private);
+                              Peer_Influence (Positive|Neutral|Negative);
+                              Parental_Education_Level (High School|College|Postgraduate);
+                              Distance_from_Home (Near|Moderate|Far); Gender (Male|Female)
 
     Returns:
         Success:
@@ -200,22 +188,13 @@ def predict_performance(features: dict) -> dict:
                     )
                 }
 
-            # Validate against allowed category values
-            if column in ORDINAL_CATEGORIES and value not in ORDINAL_CATEGORIES[column]:
+            allowed = _allowed_categories(bundle, column)
+            if allowed and value not in allowed:
                 return {
                     "status": "error",
                     "error": (
-                        f"Feature '{column}' has invalid value {value!r}. "
-                        f"Allowed categories: {ORDINAL_CATEGORIES[column]}."
-                    )
-                }
-
-            if column in NOMINAL_CATEGORIES and value not in NOMINAL_CATEGORIES[column]:
-                return {
-                    "status": "error",
-                    "error": (
-                        f"Feature '{column}' has invalid value {value!r}. "
-                        f"Allowed categories: {NOMINAL_CATEGORIES[column]}."
+                        f"Feature '{column}' must be one of {list(allowed)}. "
+                        f"Received: {value!r}."
                     )
                 }
 
@@ -235,7 +214,7 @@ def predict_performance(features: dict) -> dict:
             "status": "ok",
             "data": {
                 "prediction": prediction,
-                "unit": "exam score (0-100)",
+                "unit": "exam_score",
                 "inputs_used": inputs_used
             }
         }
