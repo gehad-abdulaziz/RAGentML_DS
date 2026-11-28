@@ -36,7 +36,7 @@ flowchart TD
 
 - Python 3.10+
 - Docker (for Neo4j)
-- An LLM API key (provider configurable in `.env`)
+- A local LLM via [Ollama](https://ollama.com) (default): `ollama pull qwen3:4b`. Other providers (openai / anthropic / google) can be selected in `.env` with `LLM_PROVIDER` and `LLM_API_KEY`
 
 ```bash
 git clone https://github.com/gehad-abdulaziz/RAGentML_DS.git
@@ -45,7 +45,7 @@ python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env             # Windows: copy .env.example .env
-# edit .env: LLM_PROVIDER, LLM_API_KEY, LLM_MODEL, NEO4J_*, CHROMA_PATH
+# edit .env: LLM_PROVIDER (default ollama), LLM_MODEL, NEO4J_*, CHROMA_PATH
 ```
 
 Never commit `.env`.
