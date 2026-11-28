@@ -10,8 +10,17 @@ The function NEVER raises to the agent. It also works on its own (no agent neede
 """
 from __future__ import annotations
 
-from neo4j import GraphDatabase
-from neo4j.exceptions import AuthError, ServiceUnavailable
+try:
+    from neo4j import GraphDatabase
+    from neo4j.exceptions import AuthError, ServiceUnavailable
+except ImportError:
+    GraphDatabase = None
+
+    class AuthError(Exception):
+        pass
+
+    class ServiceUnavailable(Exception):
+        pass
 
 from src import config
 
@@ -92,6 +101,8 @@ _driver = None
 def _get_driver():
     """Return the shared driver, creating it on the first call."""
     global _driver
+    if GraphDatabase is None:
+        return None
     if _driver is None:
         _driver = GraphDatabase.driver(
             config.NEO4J_URI,
@@ -149,7 +160,12 @@ def query_graph(query_type: str, params: dict) -> dict:
             clean_params[name] = value.strip()
 
         # 3) run the parameterized Cypher; read the rows INSIDE the session
-        with _get_driver().session() as session:
+        driver = _get_driver()
+        if driver is None:
+            return _error(
+                "Graph database driver is not installed. Install with: pip install neo4j"
+            )
+        with driver.session() as session:
             result = session.run(spec["cypher"], **clean_params)
             rows = [record.data() for record in result]
 
